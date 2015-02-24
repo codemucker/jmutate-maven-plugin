@@ -30,11 +30,19 @@ import org.codemucker.jfind.Root.RootContentType;
 import org.codemucker.jfind.Root.RootType;
 import org.codemucker.jfind.Roots;
 import org.codemucker.jfind.matcher.ARoot;
+import org.codemucker.jmatch.AString;
+import org.codemucker.jmatch.Matcher;
 import org.codemucker.jmutate.generate.GeneratorRunner;
 import org.codemucker.jmutate.generate.GeneratorRunner.Builder;
+import org.codemucker.jpattern.generate.ClashStrategy;
 import org.codemucker.jtest.MavenProjectLayout;
 import org.codemucker.jtest.ProjectLayout;
 
+import com.google.common.base.Strings;
+
+/**
+ * Scans sources for generator annotations and invokes the appropriate generator
+ */
 @Mojo(name = "generate",defaultPhase=LifecyclePhase.GENERATE_SOURCES,requiresDependencyResolution=ResolutionScope.COMPILE_PLUS_RUNTIME)
 @Execute( phase = LifecyclePhase.GENERATE_SOURCES )
 public class GeneratorMojo extends AbstractMojo {
@@ -44,22 +52,63 @@ public class GeneratorMojo extends AbstractMojo {
     
     private PluginDescriptor descriptor;
     /**
-     * The packages to scan for generation annotations
+     * The packages to scan for generation annotations. Default is all packages
      */
     @Parameter(property = "jmutate.packages", defaultValue = "*",required=false)
     private String packages;
 
+    /**
+     * For generation which creates new source files (not just modifying your existing source), what root
+     * directory to use.
+     */
     @Parameter(property = "jmutate.output.dir", defaultValue = "src/generated/java",required=false)
     private String outputDir;
 
+    /**
+     * The source directory to scan for generation annotations. Default is all source directories (includes
+     * test code)
+     */
     @Parameter(property = "jmutate.src.dir", defaultValue = "**",required=false)
     private String scanDir;
 
     @Parameter(property = "jmutate.log.level", defaultValue = "info",required=false)
     private String logLevel;
 
-    @Parameter(property = "jmutate.failonerror", defaultValue = "true",required=false)
-    private boolean failOnError;
+    @Parameter(property = "jmutate.fail_on_parse_error", defaultValue = "true",required=false)
+    private boolean failOnParseError;
+
+    @Parameter(property = "jmutate.default.clash_strategy", defaultValue = "SKIP",required=false)
+    private ClashStrategy defaultClashStrategy;
+
+    /**
+     * Optionally restrict the generate annotations processed. Matches on the annotations full name. An
+     * expression. Default is all
+     * 
+     * <p>E.g
+     * 
+     * <ul>
+     * 	<li>(*GenerateBean) && !(*Builder || *Broken*)</li>
+     * 	<li>com.acme.GenerateMyThing</li>
+     * </ul>
+     * </p>
+     */
+    @Parameter(property = "jmutate.annotation.matches", defaultValue = "*",required=false)
+    private String annotationMatches;
+
+    /**
+     * Optionally restrict the generators to allow to be invoked. Matches on the generators full name. An
+     * expression.Default is all
+     * 
+     * <p>E.g
+     * 
+     * <ul>
+     * 	<li>(*.Bean*) && !(*Builder* || *Broken*)</li>
+     * 	<li>com.acme.MyGenerator</li>
+     * </ul>
+     * </p>
+     */
+    @Parameter(property = "jmutate.generator.matches", defaultValue = "*",required=false)
+    private String generatorMatches;
 
     /**
      * Custom annotation to generator bindings
@@ -119,13 +168,19 @@ public class GeneratorMojo extends AbstractMojo {
 //        ClassLoader pluginClassLoader = getClass().getClassLoader();
 //        ClassLoader generatorClassLoader = new URLClassLoader(urls,pluginClassLoader);
 
+        Matcher<String> annotationMatcher = stringMatcher(annotationMatches);
+        Matcher<String> generatorMatcher = stringMatcher(generatorMatches);
+            
         Builder builder = GeneratorRunner.with()
                 .defaults()
                 .roots(roots)
                 .scanRoots(scanRoots)
                 .scanRootMatching(ARoot.that().isDirectory().pathMatchingAntPattern(scanDir))
                 .scanPackages(packages)
-                .failOnParseError(failOnError)
+                .failOnParseError(failOnParseError)
+                .defaultClashStrategy(defaultClashStrategy)
+                .matchAnnotations(annotationMatcher)
+                .matchGenerator(generatorMatcher)
                 .defaultGenerateTo(new DirectoryRoot(new File(layout.getBaseDir(), outputDir)));
         
         for(Map.Entry<String, String> entry:generators.entrySet()){
@@ -133,6 +188,10 @@ public class GeneratorMojo extends AbstractMojo {
         }
         builder.build().run();
     }
+
+	private static Matcher<String> stringMatcher(String expression) {
+		return Strings.isNullOrEmpty(expression) || "*".equals(expression) ? AString.equalToAnything():AString.matchingExpression(expression);
+	}
 
     private void extractProjectArtifacts(Set<URL> urls) {
         Artifact[] artifacts = project.getArtifacts().toArray(new Artifact[]{});

@@ -19,7 +19,6 @@
 		<dependency>
 			<groupId>org.codemucker</groupId>
 			<artifactId>codemucker-jmutate</artifactId>
-			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
@@ -69,14 +68,15 @@
 		</dependency>
 	</dependencies>
 	<build>
-		<!-- fix maven error http://jira.codehaus.org/browse/MNG-5346 -->
+		
 		<plugins>
-			<plugin>
+		<!-- fix maven error http://jira.codehaus.org/browse/MNG-5346 -->
+		<!-- 	<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-plugin-plugin</artifactId>
 				<version>3.2</version>
 				<configuration>
-					<!-- see http://jira.codehaus.org/browse/MNG-5346 -->
+					see http://jira.codehaus.org/browse/MNG-5346
 					<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
 				</configuration>
 
@@ -88,7 +88,7 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin> -->
 		</plugins>
 	</build>
 </project>
