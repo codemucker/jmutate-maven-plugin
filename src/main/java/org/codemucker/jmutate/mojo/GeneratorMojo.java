@@ -32,6 +32,8 @@ import org.codemucker.jfind.Roots;
 import org.codemucker.jfind.matcher.ARoot;
 import org.codemucker.jmatch.AString;
 import org.codemucker.jmatch.Matcher;
+import org.codemucker.jmutate.DefaultProjectOptions;
+import org.codemucker.jmutate.ProjectOptions;
 import org.codemucker.jmutate.generate.GeneratorRunner;
 import org.codemucker.jmutate.generate.GeneratorRunner.Builder;
 import org.codemucker.jpattern.generate.ClashStrategy;
@@ -70,6 +72,12 @@ public class GeneratorMojo extends AbstractMojo {
      */
     @Parameter(property = "jmutate.src.dir", defaultValue = "**",required=false)
     private String scanDir;
+
+    @Parameter(property = "jmutate.java.src.version", defaultValue = "",required=false)
+    private String javaSourceVersion;
+
+    @Parameter(property = "jmutate.java.target.version", defaultValue = "",required=false)
+    private String javaTargetVersion;
 
     @Parameter(property = "jmutate.log.level", defaultValue = "info",required=false)
     private String logLevel;
@@ -131,6 +139,7 @@ public class GeneratorMojo extends AbstractMojo {
         Set<URL> urls = new LinkedHashSet<>();
         extractProjectArtifacts(urls);
         
+        //used for resolution
         List<Root> roots;
         try {
             roots = Roots.with()
@@ -147,7 +156,7 @@ public class GeneratorMojo extends AbstractMojo {
             throw new MojoExecutionException("Error calculating roots",e);
         }
 
-        
+        //what to scan
         List<Root> scanRoots;
         //try {
             scanRoots = Roots.with()
@@ -179,6 +188,7 @@ public class GeneratorMojo extends AbstractMojo {
                 .scanPackages(packages)
                 .failOnParseError(failOnParseError)
                 .defaultClashStrategy(defaultClashStrategy)
+                .projectOptions(getProjectOptions())
                 .matchAnnotations(annotationMatcher)
                 .matchGenerator(generatorMatcher)
                 .defaultGenerateTo(new DirectoryRoot(new File(layout.getBaseDir(), outputDir)));
@@ -189,6 +199,17 @@ public class GeneratorMojo extends AbstractMojo {
         builder.build().run();
     }
 
+    private ProjectOptions getProjectOptions(){
+    	DefaultProjectOptions opts = new DefaultProjectOptions();
+    	if(!Strings.isNullOrEmpty(javaSourceVersion)){
+    		opts.setSourceVersion(javaSourceVersion);
+    	}
+    	if(!Strings.isNullOrEmpty(javaTargetVersion)){
+    		opts.setTargetVersion(javaTargetVersion);
+    	}
+    	return opts;
+    }
+    
 	private static Matcher<String> stringMatcher(String expression) {
 		return Strings.isNullOrEmpty(expression) || "*".equals(expression) ? AString.equalToAnything():AString.matchingExpression(expression);
 	}
