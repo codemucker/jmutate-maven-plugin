@@ -89,6 +89,13 @@ public class GeneratorMojo extends AbstractMojo {
     private ClashStrategy defaultClashStrategy;
 
     /**
+     * If true then don't run the code generator
+     */
+    @Parameter(property = "jmutate.skip", defaultValue = "false",required=false)
+    private boolean skip;
+
+    
+    /**
      * Optionally restrict the generate annotations processed. Matches on the annotations full name. An
      * expression. Default is all
      * 
@@ -126,7 +133,12 @@ public class GeneratorMojo extends AbstractMojo {
     
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+    	if(skip){
+            getLog().info("skipping code generation as jmutate.skip=true (set in pom or via system args)");
+            return;
+    	}
         getLog().info("Running JMutate Code Generator");
+        getLog().info("		- to disable set jmutate.skip=true (set in pom or via system args -Djmutate.skip)");
 
         //setup logging so that callers can see what's going on
         BasicConfigurator.configure();
