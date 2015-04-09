@@ -140,6 +140,7 @@ public class GeneratorMojo extends AbstractMojo {
         getLog().info("Running JMutate Code Generator");
         getLog().info("  - to disable set jmutate.skip=true (in pom or via system args -Djmutate.skip)");
         getLog().info("  - for log level set jmutate.log.level=<level> (in pom or via system args -Djmutate.log.level=DEBUG)");
+        getLog().info("  - other jmutate.fail_on_parse_error");
 
         //setup logging so that callers can see what's going on
         BasicConfigurator.configure();
