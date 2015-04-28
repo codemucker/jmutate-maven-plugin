@@ -5,9 +5,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -160,17 +159,16 @@ public class GeneratorMojo extends AbstractMojo {
         ProjectLayout layout = MavenProjectLayout.createUsingBaseDir(baseDir);
 
         
-        Set<URL> urls = new LinkedHashSet<>();
-        extractProjectArtifacts(urls);
+        Set<URL> projectDependencies = extractProjectArtifacts();
         
-        //used for resolution
-        List<Root> roots;
+        //used for source code resolution
+        List<Root> dependencyRoots;
         try {
-            roots = Roots.with()
+            dependencyRoots = Roots.with()
                 .projectLayout(layout)
                 .all()
-                .classpath(true)
-                .urls(urls)
+                .classpath(false)
+                .urls(projectDependencies)
                 .rootsPaths(project.getCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
                 .rootsPaths(project.getTestCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
                 .rootsPaths(project.getCompileClasspathElements(),RootType.DEPENDENCY, RootContentType.BINARY)
@@ -181,32 +179,20 @@ public class GeneratorMojo extends AbstractMojo {
         }
 
         //what to scan
-        List<Root> scanRoots;
-        //try {
-            scanRoots = Roots.with()
-                .projectLayout(layout)
-                .srcDirsOnly()
-                .rootsPaths(project.getCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
-                .rootsPaths(project.getTestCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
-                
-                //.rootsPaths(project.getCompileClasspathElements(),RootType.DEPENDENCY, RootContentType.BINARY)
-                //.rootsPaths(project.getTestClasspathElements(),RootType.DEPENDENCY, RootContentType.BINARY)
-                
-                .build();
-//        } catch (DependencyResolutionRequiredException e) {
-//            throw new MojoExecutionException("Error calculating roots",e);
-//        }
-
+        List<Root> scanRoots = Roots.with()
+            .projectLayout(layout)
+            .srcDirsOnly()
+            .rootsPaths(project.getCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
+            .rootsPaths(project.getTestCompileSourceRoots(),RootType.MAIN, RootContentType.SRC)
+            .build();
         
-//        ClassLoader pluginClassLoader = getClass().getClassLoader();
-//        ClassLoader generatorClassLoader = new URLClassLoader(urls,pluginClassLoader);
-
         Matcher<String> annotationMatcher = stringMatcher(annotationMatches);
         Matcher<String> generatorMatcher = stringMatcher(generatorMatches);
             
+        Root defaultGenerateTo = new DirectoryRoot(new File(layout.getBaseDir(), outputDir));
         Builder builder = GeneratorRunner.with()
                 .defaults()
-                .roots(roots)
+                .roots(dependencyRoots)
                 .scanRoots(scanRoots)
                 .scanRootMatching(ARoot.that().isDirectory().pathMatchingAntPattern(scanDir))
                 .scanPackages(packages)
@@ -215,12 +201,14 @@ public class GeneratorMojo extends AbstractMojo {
                 .projectOptions(getProjectOptions())
                 .matchAnnotations(annotationMatcher)
                 .matchGenerator(generatorMatcher)
-                .defaultGenerateTo(new DirectoryRoot(new File(layout.getBaseDir(), outputDir)));
+                .defaultGenerateTo(defaultGenerateTo);
         
         for(Map.Entry<String, String> entry:generators.entrySet()){
             builder.registerGenerator(entry.getKey(), entry.getValue());
         }
-        builder.build().run();
+        GeneratorRunner runner = builder.build();
+        
+        runner.run();
     }
 
     private ProjectOptions getProjectOptions(){
@@ -238,7 +226,8 @@ public class GeneratorMojo extends AbstractMojo {
 		return Strings.isNullOrEmpty(expression) || "*".equals(expression) ? AString.equalToAnything():AString.matchingExpression(expression);
 	}
 
-    private void extractProjectArtifacts(Set<URL> urls) {
+    private Set<URL> extractProjectArtifacts() {
+    	Set<URL> urls = new HashSet<>();
         Artifact[] artifacts = project.getArtifacts().toArray(new Artifact[]{});
         for(int i = 0;i < artifacts.length;i++){
             Artifact art = artifacts[i];
@@ -246,8 +235,9 @@ public class GeneratorMojo extends AbstractMojo {
                 urls.add(art.getFile().toURI().toURL());
             } catch (MalformedURLException e) {
                 //should never happen
-                e.printStackTrace();
+                getLog().error("error converting artifact path to url. Artifact:" + art,e);
             }
         }
+        return urls;
     }
 }
