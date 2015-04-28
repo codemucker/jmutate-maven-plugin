@@ -3,6 +3,9 @@ package org.codemucker.jmutate.mojo;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -94,7 +97,7 @@ public class GeneratorMojo extends AbstractMojo {
     @Parameter(property = "jmutate.skip", defaultValue = "false",required=false)
     private boolean skip;
 
-    
+    private static final Collection<String> IGNORE_PACKAGING = Arrays.asList("pom","aggregator");
     /**
      * Optionally restrict the generate annotations processed. Matches on the annotations full name. An
      * expression. Default is all
@@ -133,6 +136,10 @@ public class GeneratorMojo extends AbstractMojo {
     
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+    	if(IGNORE_PACKAGING.contains(project.getModel().getPackaging().trim().toLowerCase())){
+            getLog().info("skipping code generation as artifact type '" + project.getModel().getPackaging() + "' is hardwired to be ignored");
+            return;
+    	}
     	if(skip){
             getLog().info("skipping code generation as jmutate.skip=true (set in pom or via system args)");
             return;
@@ -148,8 +155,11 @@ public class GeneratorMojo extends AbstractMojo {
         Logger.getLogger("org.codemucker.jmutate").setLevel(Level.toLevel(logLevel));
         Logger.getLogger("org.codemucker.jfind").setLevel(Level.toLevel(logLevel));
 
-        ProjectLayout layout = new MavenProjectLayout();
+        
+        File baseDir = project.getBasedir();
+        ProjectLayout layout = MavenProjectLayout.createUsingBaseDir(baseDir);
 
+        
         Set<URL> urls = new LinkedHashSet<>();
         extractProjectArtifacts(urls);
         
