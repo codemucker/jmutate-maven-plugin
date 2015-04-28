@@ -14,7 +14,9 @@
 	<description>jmutate maven plugin for code generation</description>
 	<properties>
 	</properties>
-
+    <scm>
+       <developerConnection>scm:git:git@github.com/codemucker/jmutate-maven-plugin.git</developerConnection>
+    </scm>
 	<dependencies>
 		<dependency>
 			<groupId>org.codemucker</groupId>
