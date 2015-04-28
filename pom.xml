@@ -10,7 +10,7 @@
 	</parent>
 	<artifactId>jmutate-maven-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
-	<name>org.codemucker - JMutate Maven Plugin</name>
+	<name>org.codemucker - JMutate - Maven Plugin</name>
 	<description>jmutate maven plugin for code generation</description>
 	<properties>
 	</properties>
